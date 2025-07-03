@@ -1,131 +1,122 @@
-# Perceptron
+# Projeto Perceptron em VHDL - ESTRUTURA MODULAR OTIMIZADA
 
-Este repositório contém o código-fonte escrito em linguagem de descrição de Hardware (VHDL) para um Perceptron, bem como arquivos .tex para a compilação do relatório final referente ao desenvolvimento do mesmo.
+## 📁 Estrutura Final do Projeto
 
-## Clonando o repositório
+### ✅ **Componentes Genéricos Reutilizáveis (4 arquivos):**
+1. **`somador_generico.vhd`** - Somador parametrizável para todas as operações
+2. **`funcao_ativacao.vhd`** - Step function para saída booleana
+3. **`mux_2to1.vhd`** - Multiplexador genérico (para futuras expansões)
+4. **`registrador.vhd`** - Registrador genérico (para futuras expansões)
 
-Certifique-se de que o Git esteja instalado em seu sistema. Em seguida, clone o repositório com o seguinte comando:
+### ✅ **Módulos Principais (3 arquivos):**
+1. **`bloco_operativo.vhd`** - Caminho de dados usando componentes genéricos
+2. **`bloco_controle.vhd`** - FSM otimizada (IDLE→MULT→DONE)
+3. **`perceptron_top.vhd`** - Top-level conectando tudo
 
-Utilizando HTTPS:
-```bash
-git clone https://github.com/yanocavalcante/Perceptron.git
-cd Perceptron
+### ✅ **Suporte (2 arquivos):**
+1. **`perceptron_tb.vhd`** - Testbench para simulação
+2. **`create_project.tcl`** - Script automatizado para Quartus
+
+## 🚀 **Vantagens da Estrutura Modular:**
+
+### ✅ **Paralelismo MANTIDO:**
+```vhdl
+-- 4 multiplicadores simultâneos (não afetados pelos components)
+produto0 <= STD_LOGIC_VECTOR(unsigned(x0) * unsigned(w0));
+produto1 <= STD_LOGIC_VECTOR(unsigned(x1) * unsigned(w1));
+produto2 <= STD_LOGIC_VECTOR(unsigned(x2) * unsigned(w2));
+produto3 <= STD_LOGIC_VECTOR(unsigned(x3) * unsigned(w3));
+
+-- Somadores genéricos em paralelo
+somador1: somador_generico port map(...); -- soma01 = produto0 + produto1
+somador2: somador_generico port map(...); -- soma23 = produto2 + produto3
 ```
 
-Utilizando SSH:
-```bash
-git clone git@github.com:yanocavalcante/Perceptron.git
-cd Perceptron
-```
-## Código-Fonte
-
-TODO
-
-## Relatório LaTeX
-
-### Requisitos
-
-### 1. Compilador LaTeX
-
-É necessário ter uma distribuição LaTeX completa instalada no sistema.
-
-* Para usuários de Linux (Ubuntu, Debian, Linux Mint):
-
-```bash
-sudo apt update
-sudo apt install texlive-full
+### ✅ **Componentes Genéricos:**
+```vhdl
+-- Um somador para TODAS as operações:
+somador_generico generic (INPUT_WIDTH => 8, OUTPUT_WIDTH => 9) -- Para produtos
+somador_generico generic (INPUT_WIDTH => 9, OUTPUT_WIDTH => 10) -- Para somas parciais  
+somador_generico generic (INPUT_WIDTH => 10, OUTPUT_WIDTH => 11) -- Para bias
 ```
 
-* Para usuários de Windows:
-  Instale o [MiKTeX](https://miktex.org/download) e habilite a instalação automática de pacotes opcionais.
+### ✅ **Reutilização sem Comprometer Performance:**
+- **Mesmo hardware**: Quartus sintetiza cada instância separadamente
+- **Mesma velocidade**: Caminho crítico inalterado
+- **Código limpo**: Fácil manutenção e expansão
+- **Escalabilidade**: Fácil aumentar entradas/neurônios
 
-* Para usuários de macOS:
-  Instale o [MacTeX](https://www.tug.org/mactex/).
+## 📊 **Comparação com Versão Anterior:**
 
-Certifique-se de que o comando `latexmk` esteja disponível no terminal após a instalação.
+| Aspecto | Versão Inline | **Versão Modular** | Observações |
+|---------|---------------|-------------------|-------------|
+| **Arquivos** | 4 arquivos | **7 arquivos** | ✅ Modular, mas organizado |
+| **Reutilização** | Zero | **Alta** | ✅ Componentes genéricos |
+| **Manutenção** | Difícil | **Fácil** | ✅ Mudanças localizadas |
+| **Paralelismo** | Máximo | **Máximo** | ✅ Mantido integralmente |
+| **Performance** | Máxima | **Máxima** | ✅ Sem degradação |
+| **Expansibilidade** | Baixa | **Alta** | ✅ Fácil adicionar neurônios |
 
-### 2. Editor Visual Studio Code
+## ⚡ **Por que NÃO Compromete o Paralelismo:**
 
-Para editar e compilar os arquivos .tex referentes ao projeto minha recomendação é a utilização do Visual Studio Code com a extensão **LaTeX Workshop**. Abaixo, estão algumas instruções simples de como fazê-lo. 
-
-Instale o Visual Studio Code a partir do site oficial: [https://code.visualstudio.com/](https://code.visualstudio.com/)
-
-Em seguida, instale a extensão **LaTeX Workshop** através da aba de extensões ou com o comando:
-
-```bash
-code --install-extension James-Yu.latex-workshop
+### 1. **Multiplicação Paralela Preservada:**
+```vhdl
+-- Estas 4 linhas executam SIMULTANEAMENTE:
+produto0 <= unsigned(x0) * unsigned(w0);  -- Multiplier 0
+produto1 <= unsigned(x1) * unsigned(w1);  -- Multiplier 1  
+produto2 <= unsigned(x2) * unsigned(w2);  -- Multiplier 2
+produto3 <= unsigned(x3) * unsigned(w3);  -- Multiplier 3
 ```
 
-## Compilação do projeto
-
-1. Abra o repositório no Visual Studio Code:
-
-```bash
-code .
+### 2. **Somadores Instanciados em Paralelo:**
+```vhdl
+-- Estas 2 somas acontecem SIMULTANEAMENTE:
+somador1: soma produto0 + produto1 = soma01  -- Somador A
+somador2: soma produto2 + produto3 = soma23  -- Somador B
+-- Depois:
+somador3: soma soma01 + soma23 = total       -- Somador C
 ```
 
-2. Abra o arquivo `main.tex`.
+### 3. **Síntese Inteligente:**
+- Quartus **não compartilha** hardware entre instâncias
+- Cada `somador_generico` vira um **somador físico separado**
+- Generic apenas **parametriza** a largura, não cria gargalo
 
-3. Utilize o atalho `Ctrl + Alt + B` (ou `Cmd + Alt + B` no macOS) para compilar o documento.
+## 🎯 **Estrutura de Dados Paralela:**
 
-4. O resultado da compilação será exibido em uma visualização de PDF no próprio editor.
-
-Caso prefira utilizar o terminal:
-
-```bash
-latexmk -pdf main.tex
+```
+Clock 1: IDLE → Entradas carregadas
+         ↓
+Clock 2: MULT → TUDO EM PARALELO:
+         ├─ x0*w0 ──┐
+         ├─ x1*w1 ──┼─ soma01 ──┐
+         ├─ x2*w2 ──┐           ├─ total ─ +bias ─ ≥threshold? ─ resultado
+         └─ x3*w3 ──┼─ soma23 ──┘
+         ↓
+Clock 3: DONE → Resultado disponível
 ```
 
-Se estiver utilizando bibliografia:
+## 🔧 **Como Compilar:**
 
-```bash
-latexmk -pdf main.tex
-bibtex main
-latexmk -pdf main.tex
+```tcl
+# No Quartus:
+source create_project.tcl
+start_compilation
 ```
 
-## Troubleshooting
+## 📈 **Benefícios da Abordagem Modular:**
 
-Abaixo estão alguns problemas que podem surgir durante a compilação do arquivo .tex dentro do ambiente do VSCode. (Apareceram na primeira vez em que testei). 
+1. **✅ Flexibilidade**: Fácil trocar função de ativação (sigmoid, ReLU, etc.)
+2. **✅ Escalabilidade**: Fácil expandir para 8, 16+ entradas
+3. **✅ Manutenção**: Bugs isolados em componentes específicos
+4. **✅ Reutilização**: Componentes servem para outros projetos
+5. **✅ Legibilidade**: Código mais fácil de entender
+6. **✅ Performance**: Zero impacto na velocidade
 
-### Erro: `spawn latexmk ENOENT`
+## 🎯 **Conclusão:**
 
-Significa que o compilador `latexmk` não está instalado ou não está no PATH do sistema.
+Esta estrutura oferece **o melhor dos dois mundos**:
+- **Performance máxima** (paralelismo total preservado)
+- **Código modular** (manutenível e escalável)
 
-**Solução (Linux):**
-
-```bash
-sudo apt install latexmk
-```
-
-**Solução (Windows):**
-
-Abra o MiKTeX Console, procure por `latexmk` e instale o pacote correspondente.
-
-### Erro: `File 'cite.sty' not found`
-
-O pacote `cite` não está instalado.
-
-**Solução (Linux):**
-
-```bash
-sudo apt install texlive-latex-extra
-```
-
-**Solução (Windows):**
-
-Abra o MiKTeX Console e instale o pacote `cite`.
-
-### Erro: `File 'algorithmic.sty' not found`
-
-O pacote `algorithmic` não está instalado.
-
-**Solução (Linux):**
-
-```bash
-sudo apt install texlive-science
-```
-
-**Solução (Windows):**
-
-Abra o MiKTeX Console e instale o pacote `algorithms`.
+**Ideal para projeto acadêmico**: Demonstra tanto otimização de hardware quanto boas práticas de design!
